@@ -1,6 +1,6 @@
 {
   "name": "picgo-plugin-lankong",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "description": "Picgo uploader for 兰空图床 lsky-pro 付费版",
   "main": "dist/index.js",
   "publishConfig": {

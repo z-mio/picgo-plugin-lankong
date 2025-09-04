@@ -1,12 +1,13 @@
 import https from 'https'
 
-const UPLOADER = '兰空图床付费版'
+const UPLOADER_KEY = 'lsky-pro+'
+const UPLOADER_NAME = '兰空图床付费版'
 
 module.exports = (ctx) => {
   const register = () => {
-    ctx.helper.uploader.register(UPLOADER, {
+    ctx.helper.uploader.register(UPLOADER_KEY, {
       handle,
-      name: UPLOADER,
+      name: UPLOADER_NAME,
       config: config
     })
   }
@@ -71,7 +72,8 @@ module.exports = (ctx) => {
     }
   }
   const handle = async (ctx) => {
-    let userConfig = ctx.getConfig('picBed.' + UPLOADER)
+    const getPluginConfig = (ctx) => ctx.getConfig('picBed.' + UPLOADER_KEY) || ctx.getConfig('picBed.' + UPLOADER_NAME)
+    let userConfig = getPluginConfig(ctx)
     if (!userConfig) {
       throw new Error('Can\'t find uploader config')
     }
@@ -105,7 +107,8 @@ module.exports = (ctx) => {
   }
 
   const config = ctx => {
-    let userConfig = ctx.getConfig('picBed.' + UPLOADER)
+    const getPluginConfig = (ctx) => ctx.getConfig('picBed.' + UPLOADER_KEY) || ctx.getConfig('picBed.' + UPLOADER_NAME)
+    let userConfig = getPluginConfig(ctx)
     if (!userConfig) {
       userConfig = {}
     }
@@ -161,7 +164,7 @@ module.exports = (ctx) => {
     ]
   }
   return {
-    uploader: UPLOADER,
+    uploader: UPLOADER_KEY,
     config: config,
     register
         // guiMenu
