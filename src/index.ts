@@ -1,7 +1,7 @@
 import https from 'https'
 import { ImgType } from './lib/interface'
 
-const UPLOADER = 'lankong'
+const UPLOADER = '兰空图床付费版'
 
 module.exports = (ctx) => {
   const register = () => {
@@ -11,23 +11,18 @@ module.exports = (ctx) => {
       config: config
     })
 
-    // 注册同步删除 remove 事件
+        // 注册同步删除 remove 事件
     ctx.on('remove', onDelete)
   }
 
-  async function onDelete(files, guiApi) {
+  async function onDelete (files, guiApi) {
     let userConfig = ctx.getConfig('picBed.' + UPLOADER)
     const syncDelete = userConfig.syncDelete
-    // 如果同步删除按钮关闭则不执行
+        // 如果同步删除按钮关闭则不执行
     if (!syncDelete) {
       return
     }
-    const isV2 = userConfig.lskyProVersion === 'V2'
-    if (!isV2) {
-      ctx.emit('notification', {
-        title: `V1版本的兰空图床不支持同步删除, 请关闭同步删除选项以抑制此通知`
-      })
-    }
+        // 仅支持付费版（V2），不再支持免费版
     const deleteList = files.filter(each => each.type === UPLOADER)
     if (deleteList.length === 0) {
       return
@@ -39,13 +34,12 @@ module.exports = (ctx) => {
       let body = await ctx.Request.request(deleteParam)
 
       body = typeof body === 'string' ? JSON.parse(body) : body
-      if (body.status === true) {
+      if (body.status === 'success' || body.status === true) {
         ctx.emit('notification', {
           title: `${item.imgUrl} 同步删除成功`,
           body: body.message
         })
-      }
-      else {
+      } else {
         ctx.emit('notification', {
           title: `${item.imgUrl} 同步删除失败`,
           body: body.message
@@ -68,55 +62,36 @@ module.exports = (ctx) => {
       'Authorization': token || undefined
     }
 
-    // 如果忽略证书错误开关打开则带上 http agent 访问, 否则不需要带（以提高性能）
+        // 如果忽略证书错误开关打开则带上 http agent 访问, 否则不需要带（以提高性能）
     if (ignoreCertErr) {
       let requestAgent = new https.Agent({
-        // 此处需要取反 忽略证书错误 拒绝未授权证书选项
+                // 此处需要取反 忽略证书错误 拒绝未授权证书选项
         rejectUnauthorized: !ignoreCertErr
       })
       return {
         method: 'DELETE',
-        url: `${serverUrl}/api/v1/images/${currentImageKey}`,
+        url: `${serverUrl}/api/v2/images/${currentImageKey}`,
         agent: requestAgent,
         headers: v2Headers
       }
-    }
-    else {
+    } else {
       return {
         method: 'DELETE',
-        url: `${serverUrl}/api/v1/images/${currentImageKey}`,
+        url: `${serverUrl}/api/v2/images/${currentImageKey}`,
         headers: v2Headers
       }
     }
 
   }
 
-
   const postOptions = (userConfig, fileName, image) => {
 
     const serverUrl = userConfig.server
-    if (serverUrl.endsWith("/")) {
-      throw new Error("Server url cannot ends with /")
+    if (serverUrl.endsWith('/')) {
+      throw new Error('Server url cannot ends with /')
     }
-    const isV2 = userConfig.lskyProVersion === 'V2'
     const token = userConfig.token
     const ignoreCertErr = userConfig.ignoreCertErr
-
-    const v1Headers = {
-      'Content-Type': 'multipart/form-data',
-      'User-Agent': 'PicGo',
-      'Connection': 'keep-alive',
-      'token': token || undefined
-    }
-    const v1FormData = {
-      image: {
-        value: image,
-        options: {
-          filename: fileName
-        }
-      },
-      ssl: 'true'
-    }
 
     const v2Headers = {
       'Content-Type': 'multipart/form-data',
@@ -125,12 +100,10 @@ module.exports = (ctx) => {
       'Accept': 'application/json',
       'Authorization': token || undefined
     }
-    const strategyId = userConfig.strategyId
+    const storageId = userConfig.storageId
     const albumId = userConfig.albumId
-    let permission = userConfig.permission.value
-    if (permission === undefined) {
-      permission = userConfig.permission
-    }
+    let isPublic = userConfig.isPublic
+
     const v2FormData = {
       file: {
         value: image,
@@ -138,42 +111,35 @@ module.exports = (ctx) => {
           filename: fileName
         }
       },
-      ssl: 'true',
-      strategy_id: strategyId,
+      storage_id: storageId,
       album_id: albumId,
-      permission: permission
+      is_public: isPublic ? 1 : 0
     }
-    // V2版本情况下, 如果用户没有填写策略ID, 删除 v2FormData 中的 key: strategy_id
-    if (!strategyId) {
-      delete v2FormData.strategy_id
+    if (!storageId) {
+      delete v2FormData.storage_id
     }
     if (!albumId) {
       delete v2FormData.album_id
     }
-    if (!(permission === 0 || permission === 1)) {
-      delete v2FormData.permission
-    }
 
-    // 如果忽略证书错误开关打开则带上 http agent 访问, 否则不需要带（以提高性能）
+        // 如果忽略证书错误开关打开则带上 http agent 访问, 否则不需要带（以提高性能）
     if (ignoreCertErr) {
-      let requestAgent = new https.Agent({
-        // 此处需要取反 忽略证书错误 拒绝未授权证书选项
+      const requestAgent = new https.Agent({
         rejectUnauthorized: !ignoreCertErr
       })
       return {
         method: 'POST',
-        url: isV2 ? `${serverUrl}/api/v1/upload` : `${serverUrl}/api/upload`,
+        url: `${serverUrl}/api/v2/upload`,
         agent: requestAgent,
-        headers: isV2 ? v2Headers : v1Headers,
-        formData: isV2 ? v2FormData : v1FormData
+        headers: v2Headers,
+        formData: v2FormData
       }
-    }
-    else {
+    } else {
       return {
         method: 'POST',
-        url: isV2 ? `${serverUrl}/api/v1/upload` : `${serverUrl}/api/upload`,
-        headers: isV2 ? v2Headers : v1Headers,
-        formData: isV2 ? v2FormData : v1FormData
+        url: `${serverUrl}/api/v2/upload`,
+        headers: v2Headers,
+        formData: v2FormData
       }
     }
   }
@@ -191,19 +157,16 @@ module.exports = (ctx) => {
       const postConfig = postOptions(userConfig, imgList[i].fileName, image)
       let body = await ctx.Request.request(postConfig)
 
-      body = JSON.parse(body)
-      let isV2 = userConfig.lskyProVersion === 'V2'
-      let condition = isV2 ? (body.status === true) : (body.code === 200)
+      body = typeof body === 'string' ? JSON.parse(body) : body
+      const condition = body.status === 'success' || body.status === true
 
       if (condition) {
         delete imgList[i].base64Image
         delete imgList[i].buffer
-        imgList[i]['imgUrl'] = isV2 ? body.data.links.url : body.data.url
-        if (isV2) {
-          imgList[i]['id'] = body.data.key
-        }
-      }
-      else {
+                // 付费版返回 data.public_url，且提供 id
+        imgList[i]['imgUrl'] = body.data.public_url
+        imgList[i]['id'] = body.data.id
+      } else {
         ctx.emit('notification', {
           title: 'upload failed',
           body: body.message
@@ -221,29 +184,11 @@ module.exports = (ctx) => {
     }
     return [
       {
-        name: 'lskyProVersion',
-        type: 'list',
-        default: userConfig.lskyProVersion || 'V1',
-        message: 'Choose a version',
-        choices: [
-          {
-            name: 'V1',
-            value: 'V1'
-          },
-          {
-            name: 'V2',
-            value: 'V2'
-          }
-        ],
-        required: true,
-        alias: 'Lsky Pro Version'
-      },
-      {
         name: 'server',
         type: 'input',
         default: userConfig.server,
         required: true,
-        message: '示例: https://example.com',
+        message: '示例: https://example.com（不要以 / 结尾）',
         alias: 'Server'
       },
       {
@@ -251,42 +196,32 @@ module.exports = (ctx) => {
         type: 'input',
         default: userConfig.token,
         required: true,
-        message: '认证 token 信息',
+        message: '认证 token 信息（Authorization: Bearer <token>）',
         alias: 'Auth token'
       },
       {
-        name: 'strategyId',
+        name: 'storageId',
         type: 'input',
-        default: userConfig.strategyId,
-        required: false,
-        message: '选填, V1以及V2使用默认存储策略时请留空',
-        alias: 'Strategy ID'
+        default: userConfig.storageId,
+        required: true,
+        message: '储存ID（storage_id）',
+        alias: 'Storage ID'
       },
       {
         name: 'albumId',
         type: 'input',
         default: userConfig.albumId,
         required: false,
-        message: '选填, V2生效',
+        message: '相册ID（album_id，可选，仅登录用户有效）',
         alias: 'Album ID'
       },
       {
-        name: 'permission',
-        type: 'list',
-        default: userConfig.permission || 'private(default)',
-        message: 'set permission',
-        choices: [
-          {
-            name: 'private(default)',
-            value: 0
-          },
-          {
-            name: 'public',
-            value: 1
-          }
-        ],
-        required: false,
-        alias: 'Permission'
+        name: 'isPublic',
+        type: 'confirm',
+        default: userConfig.isPublic || false,
+        message: '是否公开图片（is_public），默认否',
+        required: true,
+        alias: 'Public'
       },
       {
         name: 'ignoreCertErr',
@@ -300,7 +235,7 @@ module.exports = (ctx) => {
         name: 'syncDelete',
         type: 'confirm',
         default: userConfig.syncDelete || false,
-        message: '是否同步删除, 只支持V2',
+        message: '是否同步删除（仅付费版支持）',
         required: true,
         alias: 'Sync Delete'
       }
@@ -310,6 +245,6 @@ module.exports = (ctx) => {
     uploader: UPLOADER,
     config: config,
     register
-    // guiMenu
+        // guiMenu
   }
 }
