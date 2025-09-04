@@ -51,7 +51,6 @@ macOS: ~/Library/Application\ Support/picgo/
 - `Storage ID`（storage_id），必填。
 - `Album ID`（album_id），选填，仅登录用户有效。
 - `Public`（is_public），是否公开图片，默认否。
-- `Sync Delete` 同步删除选项（付费版支持），开启后在 PicGo 相册中删除图片可同步删除图床上的文件，默认关闭。
 - `Ignore certificate error` 开关，默认关闭，请保持关闭，除非你遇到 `certificate has expired` 等证书报错才需要考虑将其开启。
 
 ## 补充说明 token 的获取方式
